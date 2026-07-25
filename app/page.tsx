@@ -1,325 +1,243 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { YonseiMap } from "@/components/YonseiMap";
+import { CAMPUS_CENTER } from "@/lib/demo-stories";
+import type { Story } from "@/lib/types";
 
 type Mode = "explore" | "create";
-type Pin = {
-  id: string;
-  x: number;
-  y: number;
-  place: string;
-  title: string;
-  story: string;
-  nickname: string;
-  youtubeId: string;
-  color: string;
-};
+type LatLng = { lat: number; lng: number };
 
-const seedPins: Pin[] = [
-  {
-    id: "seed-1",
-    x: 49,
-    y: 31,
-    place: "언더우드관 앞",
-    title: "처음 서울에 온 날",
-    story:
-      "첫 수업을 찾아 헤매다 이곳에서 한참 지도를 봤어요. 낯설었던 캠퍼스가 조금씩 내 자리가 되어가던 봄의 기억입니다.",
-    nickname: "파란새",
-    youtubeId: "V9PVRfjEBTI",
-    color: "#ff6b4a",
-  },
-  {
-    id: "seed-2",
-    x: 66,
-    y: 53,
-    place: "백양로",
-    title: "괜히 천천히 걷던 밤",
-    story:
-      "시험이 끝난 늦은 밤, 친구와 아무 말 없이 백양로를 걸었어요. 끝났다는 안도감과 졸업이 다가온다는 아쉬움이 같이 있었습니다.",
-    nickname: "느린산책",
-    youtubeId: "SlPhMPnQ58k",
-    color: "#6550d8",
-  },
-  {
-    id: "seed-3",
-    x: 30,
-    y: 67,
-    place: "청송대",
-    title: "비밀 아지트의 여름",
-    story:
-      "복잡한 날이면 여기로 도망왔어요. 나무 사이로 들어오던 오후 햇빛과 이어폰 속 이 노래를 함께 남깁니다.",
-    nickname: "여름숲",
-    youtubeId: "hLQl3WQQoQ0",
-    color: "#178a64",
-  },
-  {
-    id: "seed-4",
-    x: 79,
-    y: 72,
-    place: "학생회관",
-    title: "우리의 첫 합주",
-    story:
-      "박자를 계속 놓쳤지만 아무도 집에 가자고 하지 않았던 날. 서툴러서 더 선명하게 기억나는 우리의 첫 합주입니다.",
-    nickname: "네번째현",
-    youtubeId: "kJQP7kiw5Fk",
-    color: "#e5a52a",
-  },
-  {
-    id: "seed-5",
-    x: 58,
-    y: 63,
-    place: "중앙도서관 창가",
-    title: "새벽 두 시의 작은 승리",
-    story:
-      "마감까지 세 시간, 노트북 배터리는 8퍼센트. 포기하고 싶을 때 옆자리 친구가 건넨 초콜릿 하나로 결국 마지막 문장을 썼어요.",
-    nickname: "마감요정",
-    youtubeId: "fLexgOxsZu0",
-    color: "#6550d8",
-  },
-  {
-    id: "seed-6",
-    x: 39,
-    y: 48,
-    place: "백양관 계단",
-    title: "우산 하나에 둘이서",
-    story:
-      "갑자기 쏟아진 비에 처음 말을 섞은 동기와 우산 하나를 나눠 썼어요. 그날 이후 우리는 매 학기 같은 수업을 골라 들었습니다.",
-    nickname: "소나기",
-    youtubeId: "09R8_2nJtjg",
-    color: "#178a64",
-  },
-  {
-    id: "seed-7",
-    x: 70,
-    y: 35,
-    place: "공학관 앞 벤치",
-    title: "고장 난 로봇과 우리",
-    story:
-      "시연 전날까지 로봇은 한 발짝도 움직이지 않았지만 우리는 이상하게 계속 웃었어요. 실패도 함께라면 추억이 된다는 걸 알게 된 밤.",
-    nickname: "납땜초보",
-    youtubeId: "OPf0YbXqDm0",
-    color: "#ff6b4a",
-  },
-  {
-    id: "seed-8",
-    x: 24,
-    y: 38,
-    place: "대강당 뒤편",
-    title: "무대에 오르기 5분 전",
-    story:
-      "손이 떨려 기타 피크를 두 번이나 떨어뜨렸어요. 커튼 너머 친구들의 함성을 듣는 순간 두려움보다 설렘이 커졌습니다.",
-    nickname: "첫소절",
-    youtubeId: "JGwWNGJdvx8",
-    color: "#e5a52a",
-  },
-  {
-    id: "seed-9",
-    x: 44,
-    y: 77,
-    place: "노천극장",
-    title: "오월의 떼창",
-    story:
-      "모르는 사람과도 어깨를 걸고 같은 후렴을 불렀어요. 목은 쉬었지만 그날의 함성은 아직도 또렷하게 기억나요.",
-    nickname: "파란물결",
-    youtubeId: "CevxZvSJLk8",
-    color: "#6550d8",
-  },
-  {
-    id: "seed-10",
-    x: 20,
-    y: 58,
-    place: "청송대 오솔길",
-    title: "아무에게도 말하지 못한 날",
-    story:
-      "괜찮은 척하기 지쳐 혼자 걷던 길이었어요. 이어폰에서 우연히 흐른 이 노래가 오늘만 버티자고 조용히 말해줬습니다.",
-    nickname: "작은숨",
-    youtubeId: "YQHsXMglC9A",
-    color: "#178a64",
-  },
-  {
-    id: "seed-11",
-    x: 82,
-    y: 49,
-    place: "학술정보원",
-    title: "처음 받은 A+",
-    story:
-      "성적을 확인하고도 몇 번이나 화면을 새로고침했어요. 노력한 시간을 누군가 알아준 것 같아 혼자 조용히 웃었습니다.",
-    nickname: "새로고침",
-    youtubeId: "3AtDnEC4zak",
-    color: "#ff6b4a",
-  },
-  {
-    id: "seed-12",
-    x: 35,
-    y: 23,
-    place: "언더우드관 잔디",
-    title: "돗자리 위의 봄 수업",
-    story:
-      "교수님이 오늘은 밖에서 수업하자고 했어요. 필기보다 꽃잎을 더 많이 바라봤지만 이상하게 오래 기억에 남은 강의입니다.",
-    nickname: "사월노트",
-    youtubeId: "RgKAFK5djSk",
-    color: "#e5a52a",
-  },
-  {
-    id: "seed-13",
-    x: 62,
-    y: 82,
-    place: "정문 앞",
-    title: "마지막 학생증",
-    story:
-      "졸업식이 끝난 뒤에도 한참 정문을 나서지 못했어요. 이제는 방문자가 된다는 게 실감 나지 않았던 마지막 오후.",
-    nickname: "졸업유예중",
-    youtubeId: "pRpeEdMmmQ0",
-    color: "#6550d8",
-  },
-  {
-    id: "seed-14",
-    x: 75,
-    y: 61,
-    place: "학생회관 앞",
-    title: "천 원짜리 저녁",
-    story:
-      "통장 잔고가 거의 없던 날, 선배가 사준 컵라면이 유난히 따뜻했어요. 언젠가 나도 누군가의 저녁을 챙겨주기로 했습니다.",
-    nickname: "매운스프",
-    youtubeId: "60ItHLz5WEA",
-    color: "#ff6b4a",
-  },
+const quizOptions = [
+  { label: "1885년", value: "1885" },
+  { label: "1905년", value: "1905" },
+  { label: "1946년", value: "1946" },
 ];
 
-const quizOptions = ["1885년", "1905년", "1946년"];
-const colors = ["#ff6b4a", "#6550d8", "#178a64", "#e5a52a"];
-
-function extractYoutubeId(url: string) {
-  const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/,
+function youtubeId(url: string) {
+  return (
+    url.match(
+      /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/,
+    )?.[1] ?? ""
   );
-  return match?.[1] ?? "";
+}
+
+function distanceMeters(a: LatLng, b: LatLng) {
+  const radius = 6_371_000;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const value =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * radius * Math.asin(Math.sqrt(value));
 }
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("explore");
-  const [pins, setPins] = useState<Pin[]>(seedPins);
-  const [selectedId, setSelectedId] = useState(seedPins[0].id);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [panelOpen, setPanelOpen] = useState(true);
   const [quizOpen, setQuizOpen] = useState(false);
-  const [verified, setVerified] = useState(false);
   const [quizError, setQuizError] = useState(false);
-  const [nickname, setNickname] = useState("");
-  const [draftPoint, setDraftPoint] = useState({ x: 56, y: 45 });
-  const [discovered, setDiscovered] = useState<string[]>(["seed-1"]);
-  const [locating, setLocating] = useState(false);
-  const [locationMessage, setLocationMessage] = useState(
-    "현재 위치를 켜고 캠퍼스의 이야기를 발견해보세요.",
+  const [quizAnswer, setQuizAnswer] = useState("");
+  const [verified, setVerified] = useState(false);
+  const [nickname, setNickname] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : localStorage.getItem("yonsei-nickname") || "",
   );
+  const [draftPoint, setDraftPoint] = useState<LatLng>(CAMPUS_CENTER);
+  const [userPosition, setUserPosition] = useState<LatLng>();
+  const [discovered, setDiscovered] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("yonsei-discovered") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [locating, setLocating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const [notice, setNotice] = useState(
+    "현재 위치를 켜고 가까운 이야기를 발견해보세요.",
+  );
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
+    place: "내가 고른 자리",
     title: "",
     story: "",
     youtube: "",
-    place: "내가 고른 자리",
   });
 
   useEffect(() => {
-    const savedPins = localStorage.getItem("yonsei-curation-pins");
-    const savedDiscoveries = localStorage.getItem("yonsei-curation-discovered");
-    const savedNickname = localStorage.getItem("yonsei-curation-nickname");
-    if (savedPins) setPins([...seedPins, ...JSON.parse(savedPins)]);
-    if (savedDiscoveries) setDiscovered(JSON.parse(savedDiscoveries));
-    if (savedNickname) {
-      setNickname(savedNickname);
-      setVerified(true);
-    }
+    fetch("/api/stories")
+      .then((response) => response.json())
+      .then((data) => {
+        const nextStories = (data.stories ?? []) as Story[];
+        setStories(nextStories);
+        setDemoMode(Boolean(data.demo));
+        if (nextStories[0]) setSelectedId(nextStories[0].id);
+      })
+      .catch(() => setNotice("사연을 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
   }, []);
 
   const selected = useMemo(
-    () => pins.find((pin) => pin.id === selectedId) ?? pins[0],
-    [pins, selectedId],
+    () => stories.find((story) => story.id === selectedId) ?? stories[0],
+    [stories, selectedId],
   );
 
-  function chooseMode(next: Mode) {
-    if (next === "create" && !verified) {
+  const selectStory = useCallback((story: Story) => {
+    setSelectedId(story.id);
+    setPanelOpen(true);
+  }, []);
+
+  const updateDraftPoint = useCallback((point: LatLng) => {
+    setDraftPoint(point);
+  }, []);
+
+  function enterMode(nextMode: Mode) {
+    if (nextMode === "create" && !verified) {
       setQuizOpen(true);
       return;
     }
-    setMode(next);
+    setMode(nextMode);
     setPanelOpen(true);
   }
 
-  function verifyQuiz(answer: string) {
-    if (answer === "1885년") {
-      setQuizError(false);
-      setQuizOpen(false);
-      setVerified(true);
-      setMode("create");
-    } else {
+  function answerQuiz(answer: string) {
+    if (answer !== "1885") {
       setQuizError(true);
+      return;
     }
+    setQuizAnswer(answer);
+    setVerified(true);
+    setQuizError(false);
+    setQuizOpen(false);
+    setMode("create");
+    setPanelOpen(true);
   }
 
-  function selectPin(pin: Pin) {
-    setSelectedId(pin.id);
-    setPanelOpen(true);
-    if (!discovered.includes(pin.id)) {
-      const next = [...discovered, pin.id];
-      setDiscovered(next);
-      localStorage.setItem("yonsei-curation-discovered", JSON.stringify(next));
-    }
+  function saveDiscoveries(ids: string[]) {
+    const next = Array.from(new Set([...discovered, ...ids]));
+    setDiscovered(next);
+    localStorage.setItem("yonsei-discovered", JSON.stringify(next));
   }
 
   function locateMe() {
-    setLocating(true);
     if (!navigator.geolocation) {
-      setLocationMessage("이 브라우저는 위치 기능을 지원하지 않아요.");
-      setLocating(false);
+      setNotice("이 브라우저는 위치 기능을 지원하지 않아요.");
       return;
     }
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const distance =
-          Math.abs(position.coords.latitude - 37.5658) +
-          Math.abs(position.coords.longitude - 126.9386);
-        setLocationMessage(
-          distance < 0.03
-            ? "신촌캠퍼스에 도착했어요. 가까운 이야기 3개가 열렸습니다."
-            : "현재 캠퍼스 밖이에요. 발견했던 이야기는 계속 들을 수 있어요.",
-        );
-        setDiscovered(pins.map((pin) => pin.id));
+      async ({ coords }) => {
+        const position = { lat: coords.latitude, lng: coords.longitude };
+        setUserPosition(position);
+        try {
+          const response = await fetch(
+            `/api/stories?lat=${position.lat}&lng=${position.lng}&radius=50`,
+          );
+          const data = await response.json();
+          const nearby = data.demo
+            ? stories.filter(
+                (story) =>
+                  distanceMeters(position, {
+                    lat: story.latitude,
+                    lng: story.longitude,
+                  }) <= 50,
+              )
+            : ((data.stories ?? []) as Story[]);
+          saveDiscoveries(nearby.map((story) => story.id));
+          setNotice(
+            nearby.length
+              ? `반경 50m 안에서 이야기 ${nearby.length}개를 발견했어요.`
+              : "반경 50m 안에 아직 등록된 이야기가 없어요.",
+          );
+          if (nearby[0]) selectStory(nearby[0]);
+        } catch {
+          setNotice("가까운 이야기를 확인하지 못했습니다.");
+        }
         setLocating(false);
       },
       () => {
-        setLocationMessage(
-          "위치 권한을 허용하면 가까운 이야기를 자동으로 알려드려요.",
-        );
+        setNotice("위치 권한을 허용하면 가까운 이야기를 찾을 수 있어요.");
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 8000 },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 },
     );
   }
 
-  function submitPin(event: FormEvent) {
+  async function submitStory(event: FormEvent) {
     event.preventDefault();
-    const youtubeId = extractYoutubeId(form.youtube);
-    if (!youtubeId || !form.title.trim() || !form.story.trim()) return;
-    const cleanNickname = nickname.trim() || "익명의 독수리";
-    const nextPin: Pin = {
-      id: `pin-${Date.now()}`,
-      x: draftPoint.x,
-      y: draftPoint.y,
-      place: form.place || "신촌캠퍼스",
+    setSubmitError("");
+    setSubmitting(true);
+    const id = youtubeId(form.youtube);
+    if (!id) {
+      setSubmitError("올바른 YouTube 링크를 입력해주세요.");
+      setSubmitting(false);
+      return;
+    }
+    const payload = {
+      place: form.place,
       title: form.title,
       story: form.story,
-      nickname: cleanNickname,
-      youtubeId,
-      color: colors[pins.length % colors.length],
+      nickname,
+      youtube_id: id,
+      youtube_url: form.youtube,
+      latitude: draftPoint.lat,
+      longitude: draftPoint.lng,
+      quiz_answer: quizAnswer,
     };
-    const userPins = [...pins.filter((pin) => !pin.id.startsWith("seed-")), nextPin];
-    localStorage.setItem("yonsei-curation-pins", JSON.stringify(userPins));
-    localStorage.setItem("yonsei-curation-nickname", cleanNickname);
-    setNickname(cleanNickname);
-    setPins([...pins, nextPin]);
-    setSelectedId(nextPin.id);
-    setMode("explore");
-    setPanelOpen(true);
-    setForm({ title: "", story: "", youtube: "", place: "내가 고른 자리" });
+
+    try {
+      const response = await fetch("/api/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 503 && demoMode) {
+          const localStory: Story = {
+            ...payload,
+            id: `local-${Date.now()}`,
+            color: "#2f276d",
+          };
+          setStories((current) => [localStory, ...current]);
+          setSelectedId(localStory.id);
+          setNotice(
+            "샘플 모드에서 이 기기에만 저장했습니다. Supabase 연결 후에는 모두에게 공개됩니다.",
+          );
+        } else {
+          throw new Error(data.error || "사연을 저장하지 못했습니다.");
+        }
+      } else {
+        setStories((current) => [data.story as Story, ...current]);
+        setSelectedId((data.story as Story).id);
+        setNotice("새 이야기가 지도에 바로 공개됐어요.");
+      }
+      localStorage.setItem("yonsei-nickname", nickname);
+      setForm({
+        place: "내가 고른 자리",
+        title: "",
+        story: "",
+        youtube: "",
+      });
+      setMode("explore");
+      setPanelOpen(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "사연을 저장하지 못했습니다.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -335,85 +253,37 @@ export default function Home() {
         <nav className="mode-switch" aria-label="서비스 모드">
           <button
             className={mode === "explore" ? "active" : ""}
-            onClick={() => chooseMode("explore")}
+            onClick={() => enterMode("explore")}
           >
             <span>⌖</span> 탐험 모드
           </button>
           <button
             className={mode === "create" ? "active" : ""}
-            onClick={() => chooseMode("create")}
+            onClick={() => enterMode("create")}
           >
             <span>＋</span> 제공자 모드
           </button>
         </nav>
         <div className="profile">
-          <span className="profile-dot">{nickname ? nickname[0] : "ㅇ"}</span>
+          <span className="profile-dot">{nickname?.[0] || "ㅇ"}</span>
           <span>{nickname || "방문자"}</span>
         </div>
       </header>
 
-      <section className="map-stage">
-        <div className="map-grain" />
-        <div className="campus-boundary" />
-        <div className="road road-a" />
-        <div className="road road-b" />
-        <div className="road road-c" />
-        <div className="pond" />
-        <span className="pond-label">청송대 연못</span>
-        <div className="building underwood">
-          <i />
-          <span>언더우드관</span>
-        </div>
-        <div className="building library">
-          <i />
-          <span>중앙도서관</span>
-        </div>
-        <div className="building student">
-          <i />
-          <span>학생회관</span>
-        </div>
-        <div className="building engineering">
-          <i />
-          <span>공학관</span>
-        </div>
-        <div className="building auditorium">
-          <i />
-          <span>대강당</span>
-        </div>
-        <span className="map-label baekyang">백 양 로</span>
-        <span className="map-label yonsei">연세대학교 신촌캠퍼스</span>
+      <section className="map-stage real-map-stage">
+        <YonseiMap
+          stories={stories}
+          selectedId={selectedId}
+          mode={mode}
+          draftPoint={draftPoint}
+          userPosition={userPosition}
+          onSelect={selectStory}
+          onDraftPoint={updateDraftPoint}
+        />
 
-        {pins.map((pin) => (
-          <button
-            key={pin.id}
-            className={`map-pin ${selectedId === pin.id ? "selected" : ""}`}
-            style={
-              {
-                left: `${pin.x}%`,
-                top: `${pin.y}%`,
-                "--pin-color": pin.color,
-              } as React.CSSProperties
-            }
-            onClick={() => selectPin(pin)}
-            aria-label={`${pin.title}, ${pin.place}`}
-          >
-            <span>♫</span>
-          </button>
-        ))}
-
-        {mode === "create" && (
-          <button
-            className="draft-pin"
-            style={{ left: `${draftPoint.x}%`, top: `${draftPoint.y}%` }}
-            aria-label="새 핀 위치"
-          >
-            <span>＋</span>
-          </button>
-        )}
-
-        <div className="map-tools">
-          <button aria-label="확대">＋</button>
-          <button aria-label="축소">−</button>
+        <div className="map-status">
+          <span className={demoMode ? "status-dot demo" : "status-dot"} />
+          {demoMode ? "샘플 데이터 모드" : "실시간 공용 지도"}
         </div>
         <button className="location-button" onClick={locateMe}>
           <span className={locating ? "spin" : ""}>⌖</span>
@@ -429,42 +299,57 @@ export default function Home() {
             >
               ×
             </button>
-            <div className="eyebrow">
-              <span className="live-dot" /> 지금 이곳의 이야기
-            </div>
-            <p className="place-name">⌖ {selected.place}</p>
-            <h1>{selected.title}</h1>
-            <p className="story-copy">{selected.story}</p>
-            <div className="author-row">
-              <span className="avatar">{selected.nickname[0]}</span>
-              <span>
-                <small>남긴 사람</small>
-                <strong>{selected.nickname}</strong>
-              </span>
-            </div>
-            <div className="player">
-              <iframe
-                key={selected.youtubeId}
-                src={`https://www.youtube-nocookie.com/embed/${selected.youtubeId}?playsinline=1`}
-                title={`${selected.title}의 노래`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <div className="discovery-row">
-              <span>발견한 이야기</span>
-              <strong>
-                {discovered.length} / {pins.length}
-              </strong>
-            </div>
-            <div className="progress">
-              <i
-                style={{
-                  width: `${Math.min(100, (discovered.length / pins.length) * 100)}%`,
-                }}
-              />
-            </div>
-            <p className="location-note">{locationMessage}</p>
+            {loading ? (
+              <div className="panel-loading">캠퍼스의 이야기를 불러오는 중…</div>
+            ) : selected ? (
+              <>
+                <div className="eyebrow">
+                  <span className="live-dot" /> 지금 이곳의 이야기
+                </div>
+                <p className="place-name">⌖ {selected.place}</p>
+                <h1>{selected.title}</h1>
+                <p className="story-copy">{selected.story}</p>
+                <div className="author-row">
+                  <span className="avatar">{selected.nickname[0]}</span>
+                  <span>
+                    <small>남긴 사람</small>
+                    <strong>{selected.nickname}</strong>
+                  </span>
+                </div>
+                <div className="player">
+                  <iframe
+                    key={selected.youtube_id}
+                    src={`https://www.youtube-nocookie.com/embed/${selected.youtube_id}?playsinline=1`}
+                    title={`${selected.title}의 노래`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <div className="discovery-row">
+                  <span>발견한 이야기</span>
+                  <strong>
+                    {discovered.length} / {stories.length}
+                  </strong>
+                </div>
+                <div className="progress">
+                  <i
+                    style={{
+                      width: `${
+                        stories.length
+                          ? Math.min(
+                              100,
+                              (discovered.length / stories.length) * 100,
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+                <p className="location-note">{notice}</p>
+              </>
+            ) : (
+              <div className="panel-loading">아직 등록된 이야기가 없어요.</div>
+            )}
           </aside>
         ) : (
           <aside className="story-panel create-panel open">
@@ -473,17 +358,17 @@ export default function Home() {
             </div>
             <h1>이 자리에 어떤 기억이 있나요?</h1>
             <p className="create-help">
-              지도를 눌러 핀을 옮긴 뒤, 그곳에 어울리는 노래와 이야기를
+              실제 지도를 눌러 핀을 놓고, 그곳에 어울리는 노래와 이야기를
               들려주세요.
             </p>
-            <form onSubmit={submitPin}>
+            <form onSubmit={submitStory}>
               <label>
                 닉네임
                 <input
                   value={nickname}
                   onChange={(event) => setNickname(event.target.value)}
                   placeholder="예: 느린산책"
-                  maxLength={12}
+                  maxLength={20}
                   required
                 />
               </label>
@@ -494,7 +379,7 @@ export default function Home() {
                   onChange={(event) =>
                     setForm({ ...form, place: event.target.value })
                   }
-                  maxLength={24}
+                  maxLength={40}
                   required
                 />
               </label>
@@ -506,7 +391,7 @@ export default function Home() {
                     setForm({ ...form, title: event.target.value })
                   }
                   placeholder="한 문장으로 기억을 붙여주세요"
-                  maxLength={40}
+                  maxLength={60}
                   required
                 />
               </label>
@@ -518,7 +403,7 @@ export default function Home() {
                     setForm({ ...form, story: event.target.value })
                   }
                   placeholder="그날의 공기와 마음을 들려주세요"
-                  maxLength={300}
+                  maxLength={500}
                   required
                 />
               </label>
@@ -534,57 +419,19 @@ export default function Home() {
                   required
                 />
               </label>
-              <div className="point-picker">
-                <span>핀 위치 미세 조정</span>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftPoint({
-                        ...draftPoint,
-                        x: Math.max(8, draftPoint.x - 5),
-                      })
-                    }
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftPoint({
-                        ...draftPoint,
-                        y: Math.max(10, draftPoint.y - 5),
-                      })
-                    }
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftPoint({
-                        ...draftPoint,
-                        y: Math.min(85, draftPoint.y + 5),
-                      })
-                    }
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDraftPoint({
-                        ...draftPoint,
-                        x: Math.min(92, draftPoint.x + 5),
-                      })
-                    }
-                  >
-                    →
-                  </button>
-                </div>
+              <div className="coordinate-readout">
+                <span>선택한 위치</span>
+                <strong>
+                  {draftPoint.lat.toFixed(5)}, {draftPoint.lng.toFixed(5)}
+                </strong>
               </div>
-              <button className="submit-story" type="submit">
-                지도에 바로 공개하기
+              {submitError && <p className="form-error">{submitError}</p>}
+              <button
+                className="submit-story"
+                type="submit"
+                disabled={submitting}
+              >
+                {submitting ? "공개하는 중…" : "지도에 바로 공개하기"}
               </button>
             </form>
           </aside>
@@ -600,7 +447,7 @@ export default function Home() {
       <div className="mobile-bar">
         <button
           className={mode === "explore" ? "active" : ""}
-          onClick={() => chooseMode("explore")}
+          onClick={() => enterMode("explore")}
         >
           <span>⌖</span>탐험
         </button>
@@ -609,7 +456,7 @@ export default function Home() {
         </button>
         <button
           className={mode === "create" ? "active" : ""}
-          onClick={() => chooseMode("create")}
+          onClick={() => enterMode("create")}
         >
           <span>＋</span>기록
         </button>
@@ -632,8 +479,11 @@ export default function Home() {
             </p>
             <div className="quiz-options">
               {quizOptions.map((option) => (
-                <button key={option} onClick={() => verifyQuiz(option)}>
-                  {option}
+                <button
+                  key={option.value}
+                  onClick={() => answerQuiz(option.value)}
+                >
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -642,7 +492,7 @@ export default function Home() {
                 아쉬워요! 캠퍼스의 역사를 한 번 더 떠올려보세요.
               </p>
             )}
-            <small>간단한 연세 퀴즈를 통과하면 바로 기록할 수 있어요.</small>
+            <small>퀴즈 답은 사연 등록 시 서버에서도 다시 확인합니다.</small>
           </div>
         </div>
       )}

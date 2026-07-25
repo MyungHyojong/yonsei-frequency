@@ -150,6 +150,171 @@ button {
     linear-gradient(145deg, #e8e4d7 0%, #dfe4d7 55%, #e9e0ce 100%);
 }
 
+.real-map-stage {
+  background: #dfe4d7;
+}
+
+.kakao-map,
+.map-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.kakao-map {
+  background: #e8e7d9;
+}
+
+.map-fallback {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 28% 70%, rgba(68, 116, 81, 0.18), transparent 22%),
+    radial-gradient(circle at 72% 24%, rgba(85, 130, 84, 0.14), transparent 28%),
+    repeating-linear-gradient(
+      -16deg,
+      transparent 0 78px,
+      rgba(255, 253, 247, 0.7) 79px 96px,
+      transparent 97px 156px
+    ),
+    #e8e7d9;
+}
+
+.fallback-campus {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(480px, 70%);
+  padding: 28px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(47, 39, 109, 0.28);
+  border-radius: 28px;
+  background: rgba(255, 253, 247, 0.68);
+  text-align: center;
+}
+
+.fallback-campus strong,
+.fallback-campus span {
+  display: block;
+}
+
+.fallback-campus strong {
+  font-family: Georgia, "Noto Serif KR", serif;
+  font-size: clamp(22px, 3vw, 38px);
+}
+
+.fallback-campus span {
+  margin-top: 8px;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fallback-campus p {
+  max-width: 340px;
+  margin: 18px auto 0;
+  color: #68736d;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.fallback-campus code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #e7e2f2;
+  color: var(--purple);
+}
+
+.fallback-pin {
+  position: absolute;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  transform: translate(-50%, -50%);
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 8px;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 6px 15px rgba(31, 41, 35, 0.24);
+}
+
+.fallback-pin.selected {
+  z-index: 5;
+  outline: 4px solid rgba(255, 255, 255, 0.6);
+  transform: translate(-50%, -50%) scale(1.18);
+}
+
+.real-map-pin {
+  width: 42px;
+  height: 42px;
+  border: 4px solid white;
+  border-radius: 50% 50% 50% 8px;
+  transform: rotate(-45deg);
+  background: var(--pin-color);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 7px 16px rgba(35, 42, 37, 0.3);
+  transition: transform 0.18s ease;
+}
+
+.real-map-pin span {
+  display: inline-block;
+  transform: rotate(45deg);
+  font-size: 15px;
+}
+
+.real-map-pin:hover,
+.real-map-pin.selected {
+  transform: rotate(-45deg) scale(1.18);
+}
+
+.real-map-pin.draft {
+  display: grid;
+  place-items: center;
+  --pin-color: #101c37;
+}
+
+.user-location-dot {
+  width: 18px;
+  height: 18px;
+  border: 4px solid white;
+  border-radius: 50%;
+  background: #3579ef;
+  box-shadow:
+    0 0 0 9px rgba(53, 121, 239, 0.2),
+    0 3px 12px rgba(30, 67, 135, 0.35);
+}
+
+.map-status {
+  position: absolute;
+  z-index: 10;
+  right: 30px;
+  top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(255, 253, 247, 0.94);
+  box-shadow: 0 6px 18px rgba(32, 39, 35, 0.14);
+  color: #53605a;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2a9b68;
+  box-shadow: 0 0 0 4px rgba(42, 155, 104, 0.14);
+}
+
+.status-dot.demo {
+  background: #d89a27;
+  box-shadow: 0 0 0 4px rgba(216, 154, 39, 0.14);
+}
+
 .map-grain {
   position: absolute;
   inset: 0;
@@ -371,7 +536,7 @@ button {
   position: absolute;
   z-index: 10;
   right: 30px;
-  top: 126px;
+  top: 82px;
   display: flex;
   gap: 7px;
   align-items: center;
@@ -383,6 +548,13 @@ button {
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.panel-loading {
+  padding: 70px 0;
+  color: #68736d;
+  text-align: center;
+  font-family: Georgia, "Noto Serif KR", serif;
 }
 
 .spin {
@@ -615,6 +787,35 @@ button {
   font-weight: 900;
 }
 
+.coordinate-readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #ece8dc;
+  color: #6d766f;
+  font-size: 10px;
+}
+
+.coordinate-readout strong {
+  color: var(--purple);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+}
+
+.form-error {
+  margin: 0;
+  color: #c74c35;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.submit-story:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .point-picker div {
   display: flex;
   gap: 4px;
@@ -812,8 +1013,23 @@ button {
   }
 
   .location-button {
-    top: 108px;
+    top: 62px;
     right: 14px;
+  }
+
+  .map-status {
+    top: 14px;
+    right: 14px;
+  }
+
+  .fallback-campus {
+    top: 34%;
+    width: calc(100% - 40px);
+    padding: 20px;
+  }
+
+  .fallback-campus p {
+    display: none;
   }
 
   .story-panel,

@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const siteHost =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+  process.env.VERCEL_URL ||
+  "http://localhost:3000";
+const siteUrl = siteHost.startsWith("http") ? siteHost : `https://${siteHost}`;
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "연세의 소리 — Yonsei Sound Map",
   description:
     "신촌캠퍼스 곳곳에 남겨진 노래와 사연을 발견하고, 나만의 기억을 지도에 남겨보세요.",

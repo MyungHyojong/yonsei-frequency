@@ -1,0 +1,18 @@
+export type Story = {
+  id: string;
+  place: string;
+  title: string;
+  story: string;
+  nickname: string;
+  youtube_id: string;
+  latitude: number;
+  longitude: number;
+  color: string;
+  status?: "published" | "hidden";
+  created_at?: string;
+};
+
+export type StoryInput = Omit<Story, "id" | "color" | "status" | "created_at"> & {
+  youtube_url: string;
+  quiz_answer: string;
+};
