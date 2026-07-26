@@ -1,54 +1,25 @@
-# 연세의 소리
+# YONSEI AFTERDARK
 
-연세대학교 신촌캠퍼스의 장소에 노래와 사연을 남기고, 현장에서 GPS로
-가까운 이야기를 발견하는 모바일 우선 사운드 맵입니다.
-
-## 구성
-
-- Next.js App Router
-- Next.js Route Handler (`/api/stories`)
-- Kakao Maps JavaScript API
-- Supabase Postgres + PostGIS
-- YouTube IFrame Player
-- Vercel 배포
+연세대학교 신촌캠퍼스의 장소에 음악과 사연을 남기고, GPS로 가까운 이야기를 발견하는 로컬 데모입니다.
 
 ## 로컬 실행
 
-```bash
-npm install
-copy .env.example .env.local
-npm run dev
-```
+1. `.env.local`에 카카오 지도 JavaScript 키를 설정합니다.
+2. 터미널에서 `npm install`을 한 번 실행합니다.
+3. `npm run dev:local`을 실행합니다.
+4. 브라우저에서 `http://127.0.0.1:3001`을 엽니다.
 
-환경변수가 없을 때는 14개의 샘플 사연과 간이 지도가 표시됩니다.
+## 데이터와 개인정보
 
-## Kakao 지도 설정
+- 사연, 닉네임, 발견 기록은 브라우저 `localStorage`에만 저장됩니다.
+- 별도 API 서버, 외부 데이터베이스, 배포 서비스가 필요하지 않습니다.
+- `.env.local`은 `.gitignore`에 포함되어 키가 소스 관리에 들어가지 않습니다.
+- 브라우저 데이터를 지우거나 다른 브라우저를 사용하면 직접 등록한 사연도 보이지 않습니다.
 
-1. Kakao Developers에서 애플리케이션을 생성합니다.
-2. JavaScript 키를 `.env.local`의 `NEXT_PUBLIC_KAKAO_MAP_KEY`에 넣습니다.
-3. JavaScript SDK 도메인에 `http://localhost:3000`과 Vercel 프로덕션
-   도메인을 등록합니다.
+## 데모 사용법
 
-## Supabase 설정
+- **탐험 모드:** `GPS SCAN`을 눌러 현재 위치와 50m 이내의 이야기를 확인합니다.
+- **제공자 모드:** 퀴즈 정답 `1885`를 입력하고 지도를 클릭한 뒤 YouTube URL과 사연을 저장합니다.
+- 샘플 사연 14개가 기본으로 포함되어 있습니다.
 
-1. Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 실행합니다.
-2. 같은 화면에서 `supabase/seed.sql`을 실행해 샘플 사연 14개를 넣습니다.
-3. Project URL을 `SUPABASE_URL`에 넣습니다.
-4. 서버 전용 Service Role Key를 `SUPABASE_SERVICE_ROLE_KEY`에 넣습니다.
-5. Service Role Key에는 `NEXT_PUBLIC_` 접두사를 붙이지 않습니다.
-
-읽기는 RLS를 적용하고, 쓰기는 Next.js API에서 입력값·퀴즈 답·캠퍼스 좌표를
-검증한 뒤 서버 전용 키로 처리합니다.
-
-## Vercel 배포
-
-Git 저장소를 Vercel에 연결하고 `.env.example`의 네 환경변수를 Project
-Settings에 등록합니다. 빌드 명령은 `npm run build`이며 별도 서버는 필요하지
-않습니다.
-
-## 확인
-
-```bash
-npm run build
-npm run lint
-```
+실제 기기 GPS는 브라우저의 위치 권한이 필요합니다. 로컬에서는 `127.0.0.1`이 안전한 컨텍스트로 취급되어 위치 기능을 테스트할 수 있습니다.

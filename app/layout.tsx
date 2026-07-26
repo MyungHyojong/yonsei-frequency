@@ -1,41 +1,28 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const siteHost =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-  process.env.VERCEL_URL ||
-  "http://localhost:3000";
-const siteUrl = siteHost.startsWith("http") ? siteHost : `https://${siteHost}`;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://127.0.0.1:3001";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "연세의 소리 — Yonsei Sound Map",
-  description:
-    "신촌캠퍼스 곳곳에 남겨진 노래와 사연을 발견하고, 나만의 기억을 지도에 남겨보세요.",
+  title: "YONSEI FREQUENCY · 연세 주파수",
+  description: "연세대학교 신촌캠퍼스의 장소와 음악, 이야기를 발견하는 위치 기반 사운드맵.",
   openGraph: {
-    title: "연세의 소리",
-    description: "신촌캠퍼스 곳곳에 남겨진 노래와 사연을 발견해보세요.",
+    title: "YONSEI FREQUENCY · 연세 주파수",
+    description: "연세대학교 신촌캠퍼스의 장소와 음악, 이야기를 발견하세요.",
     type: "website",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "연세의 소리" }],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "YONSEI FREQUENCY" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "연세의 소리",
-    description: "신촌캠퍼스 곳곳에 남겨진 노래와 사연을 발견해보세요.",
+    title: "YONSEI FREQUENCY · 연세 주파수",
+    description: "연세대학교 신촌캠퍼스의 장소와 음악, 이야기를 발견하세요.",
     images: ["/og.png"],
   },
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-  },
+  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
       <body>{children}</body>

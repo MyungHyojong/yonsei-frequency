@@ -2,19 +2,31 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { YonseiMap } from "@/components/YonseiMap";
-import { CAMPUS_CENTER } from "@/lib/demo-stories";
-import type { Story } from "@/lib/types";
+import { CAMPUS_CENTER, demoStories } from "@/lib/demo-stories";
+import type { Emotion, Story } from "@/lib/types";
 
 type Mode = "explore" | "create";
 type LatLng = { lat: number; lng: number };
+type LocationMethod = "pin" | "current";
 
-const quizOptions = [
-  { label: "1885년", value: "1885" },
-  { label: "1905년", value: "1905" },
-  { label: "1946년", value: "1946" },
+const emotionOptions: Array<{ key: Emotion; color: string; icon: string }> = [
+  { key: "설렘", color: "#ff9fbd", icon: "♡" },
+  { key: "그리움", color: "#a99bdd", icon: "◐" },
+  { key: "위로", color: "#82cfc7", icon: "≈" },
+  { key: "기쁨", color: "#f4c95d", icon: "✦" },
+  { key: "고요", color: "#8dbbe8", icon: "○" },
+  { key: "열정", color: "#f07b6a", icon: "↟" },
 ];
+const emotionColor = Object.fromEntries(
+  emotionOptions.map(({ key, color }) => [key, color]),
+) as Record<Emotion, string>;
+const baseStories = demoStories.map((story, index) => ({
+  ...story,
+  emotion: emotionOptions[index % emotionOptions.length].key,
+  color: emotionOptions[index % emotionOptions.length].color,
+}));
 
-function youtubeId(url: string) {
+function parseYouTubeId(url: string) {
   return (
     url.match(
       /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/,
@@ -37,60 +49,103 @@ function distanceMeters(a: LatLng, b: LatLng) {
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("explore");
-  const [stories, setStories] = useState<Story[]>([]);
+  const [stories, setStories] = useState<Story[]>(baseStories);
   const [selectedId, setSelectedId] = useState("");
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizError, setQuizError] = useState(false);
-  const [quizAnswer, setQuizAnswer] = useState("");
   const [verified, setVerified] = useState(false);
-  const [nickname, setNickname] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : localStorage.getItem("yonsei-nickname") || "",
-  );
+  const [nickname, setNickname] = useState("");
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [nicknameOpen, setNicknameOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [draftPoint, setDraftPoint] = useState<LatLng>(CAMPUS_CENTER);
+  const [locationMethod, setLocationMethod] = useState<LocationMethod>("pin");
   const [userPosition, setUserPosition] = useState<LatLng>();
-  const [discovered, setDiscovered] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      return JSON.parse(localStorage.getItem("yonsei-discovered") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const [testPositionEnabled, setTestPositionEnabled] = useState(false);
+  const [discovered, setDiscovered] = useState<string[]>([]);
   const [locating, setLocating] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
   const [notice, setNotice] = useState(
-    "현재 위치를 켜고 가까운 이야기를 발견해보세요.",
+    "GPS를 활성화하고 캠퍼스의 숨겨진 주파수를 탐색하세요.",
   );
-  const [submitError, setSubmitError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [form, setForm] = useState({
-    place: "내가 고른 자리",
+    place: "신촌캠퍼스의 어느 곳",
     title: "",
     story: "",
     youtube: "",
+    emotion: "설렘" as Emotion,
   });
 
   useEffect(() => {
-    fetch("/api/stories")
-      .then((response) => response.json())
-      .then((data) => {
-        const nextStories = (data.stories ?? []) as Story[];
+    Promise.resolve().then(() => {
+      try {
+        const localStories = JSON.parse(
+          localStorage.getItem("yonsei-neon-stories") || "[]",
+        ) as Story[];
+        const savedDiscovered = JSON.parse(
+          localStorage.getItem("yonsei-gps-discovered") || "[]",
+        ) as string[];
+        const normalizedLocalStories = localStories.map((story) => ({
+          ...story,
+          emotion: story.emotion || ("고요" as Emotion),
+          color: story.emotion ? emotionColor[story.emotion] : story.color,
+        }));
+        const nextStories = [...normalizedLocalStories, ...baseStories];
+        const validStoryIds = new Set(nextStories.map((story) => story.id));
+        const validDiscovered = savedDiscovered.filter((id) => validStoryIds.has(id));
         setStories(nextStories);
-        setDemoMode(Boolean(data.demo));
-        if (nextStories[0]) setSelectedId(nextStories[0].id);
-      })
-      .catch(() => setNotice("사연을 불러오지 못했습니다."))
-      .finally(() => setLoading(false));
+        setDiscovered(validDiscovered);
+        localStorage.setItem("yonsei-gps-discovered", JSON.stringify(validDiscovered));
+        const savedNickname = localStorage.getItem("yonsei-neon-nickname") || "";
+        setNickname(savedNickname);
+        setNicknameDraft(savedNickname);
+        setNicknameOpen(!savedNickname);
+        setDarkMode(localStorage.getItem("yonsei-frequency-theme") === "dark");
+      } catch {
+        localStorage.removeItem("yonsei-neon-stories");
+        localStorage.removeItem("yonsei-gps-discovered");
+        setNicknameOpen(true);
+      }
+    });
   }, []);
 
+  function saveNickname(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextNickname = nicknameDraft.trim();
+    if (!nextNickname) return;
+    setNickname(nextNickname);
+    localStorage.setItem("yonsei-neon-nickname", nextNickname);
+    setNicknameOpen(false);
+  }
+
+  function toggleTheme() {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("yonsei-frequency-theme", next ? "dark" : "light");
+  }
+
   const selected = useMemo(
-    () => stories.find((story) => story.id === selectedId) ?? stories[0],
+    () => stories.find((story) => story.id === selectedId),
     [stories, selectedId],
   );
+
+  const nearbyStories = useMemo(
+    () =>
+      userPosition
+        ? stories.filter(
+            (story) =>
+              distanceMeters(userPosition, {
+                lat: story.latitude,
+                lng: story.longitude,
+              }) <= 50,
+          )
+        : [],
+    [stories, userPosition],
+  );
+  const collectionPercent = stories.length
+    ? Math.round((discovered.length / stories.length) * 100)
+    : 0;
 
   const selectStory = useCallback((story: Story) => {
     setSelectedId(story.id);
@@ -99,6 +154,7 @@ export default function Home() {
 
   const updateDraftPoint = useCallback((point: LatLng) => {
     setDraftPoint(point);
+    setLocationMethod("pin");
   }, []);
 
   function enterMode(nextMode: Mode) {
@@ -107,7 +163,13 @@ export default function Home() {
       return;
     }
     setMode(nextMode);
-    setPanelOpen(true);
+    if (nextMode === "explore") {
+      setSelectedId("");
+      setPanelOpen(false);
+    } else {
+      setTestPositionEnabled(false);
+      setPanelOpen(true);
+    }
   }
 
   function answerQuiz(answer: string) {
@@ -115,158 +177,194 @@ export default function Home() {
       setQuizError(true);
       return;
     }
-    setQuizAnswer(answer);
     setVerified(true);
     setQuizError(false);
     setQuizOpen(false);
     setMode("create");
+    setTestPositionEnabled(false);
     setPanelOpen(true);
   }
 
-  function saveDiscoveries(ids: string[]) {
-    const next = Array.from(new Set([...discovered, ...ids]));
-    setDiscovered(next);
-    localStorage.setItem("yonsei-discovered", JSON.stringify(next));
+  const saveDiscoveries = useCallback((ids: string[]) => {
+    setDiscovered((current) => {
+      const next = Array.from(new Set([...current, ...ids]));
+      localStorage.setItem("yonsei-gps-discovered", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const updateTestPosition = useCallback((position: LatLng) => {
+    const nearby = stories.filter(
+      (story) =>
+        distanceMeters(position, {
+          lat: story.latitude,
+          lng: story.longitude,
+        }) <= 50,
+    );
+    setUserPosition(position);
+    setNotice(`테스트 마커 위치에서 ${nearby.length}개의 사연 신호를 찾았습니다.`);
+    setSelectedId("");
+    setPanelOpen(false);
+  }, [stories]);
+
+  function simulateCampusPosition() {
+    if (testPositionEnabled) {
+      setTestPositionEnabled(false);
+      setUserPosition(undefined);
+      setSelectedId("");
+      setPanelOpen(false);
+      setNotice("수동 위치 변경을 종료했습니다.");
+      return;
+    }
+    setTestPositionEnabled(true);
+    updateTestPosition(CAMPUS_CENTER);
+    setNotice("지도 위 테스트 마커를 마우스로 잡아 원하는 위치로 이동하세요.");
   }
 
   function locateMe() {
     if (!navigator.geolocation) {
-      setNotice("이 브라우저는 위치 기능을 지원하지 않아요.");
+      setNotice("이 브라우저에서는 GPS를 사용할 수 없습니다.");
       return;
     }
     setLocating(true);
+    setTestPositionEnabled(false);
+    setNotice("위성 신호를 탐색하는 중…");
     navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
+      ({ coords }) => {
         const position = { lat: coords.latitude, lng: coords.longitude };
+        const nearby = stories.filter(
+          (story) =>
+            distanceMeters(position, {
+              lat: story.latitude,
+              lng: story.longitude,
+            }) <= 50,
+        );
         setUserPosition(position);
-        try {
-          const response = await fetch(
-            `/api/stories?lat=${position.lat}&lng=${position.lng}&radius=50`,
-          );
-          const data = await response.json();
-          const nearby = data.demo
-            ? stories.filter(
-                (story) =>
-                  distanceMeters(position, {
-                    lat: story.latitude,
-                    lng: story.longitude,
-                  }) <= 50,
-              )
-            : ((data.stories ?? []) as Story[]);
-          saveDiscoveries(nearby.map((story) => story.id));
-          setNotice(
-            nearby.length
-              ? `반경 50m 안에서 이야기 ${nearby.length}개를 발견했어요.`
-              : "반경 50m 안에 아직 등록된 이야기가 없어요.",
-          );
-          if (nearby[0]) selectStory(nearby[0]);
-        } catch {
-          setNotice("가까운 이야기를 확인하지 못했습니다.");
-        }
+        saveDiscoveries(nearby.map((story) => story.id));
+        setNotice(
+          nearby.length
+            ? `반경 50m에서 ${nearby.length}개의 주파수를 포착했습니다.`
+            : "반경 50m 안에 등록된 주파수가 없습니다.",
+        );
+        setSelectedId("");
+        setPanelOpen(false);
         setLocating(false);
       },
       () => {
-        setNotice("위치 권한을 허용하면 가까운 이야기를 찾을 수 있어요.");
+        setNotice("브라우저에서 위치 권한을 허용해주세요.");
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 },
     );
   }
 
-  async function submitStory(event: FormEvent) {
-    event.preventDefault();
-    setSubmitError("");
-    setSubmitting(true);
-    const id = youtubeId(form.youtube);
-    if (!id) {
-      setSubmitError("올바른 YouTube 링크를 입력해주세요.");
-      setSubmitting(false);
+  function useCurrentLocationForStory() {
+    setLocationMethod("current");
+    if (!navigator.geolocation) {
+      setFormError("이 브라우저에서는 현재 위치를 사용할 수 없습니다.");
       return;
     }
-    const payload = {
-      place: form.place,
-      title: form.title,
-      story: form.story,
-      nickname,
+    setLocating(true);
+    setFormError("");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const position = { lat: coords.latitude, lng: coords.longitude };
+        setDraftPoint(position);
+        setUserPosition(position);
+        setTestPositionEnabled(false);
+        setNotice("현재 위치를 사연 장소로 설정했습니다.");
+        setLocating(false);
+      },
+      () => {
+        setFormError("현재 위치를 가져오지 못했습니다. 위치 권한을 확인해주세요.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 },
+    );
+  }
+
+  function submitStory(event: FormEvent) {
+    event.preventDefault();
+    setFormError("");
+    const id = parseYouTubeId(form.youtube);
+    if (!id) {
+      setFormError("올바른 YouTube 링크를 입력해주세요.");
+      return;
+    }
+
+    const newStory: Story = {
+      id: `local-${Date.now()}`,
+      place: form.place.trim(),
+      title: form.title.trim(),
+      story: form.story.trim(),
+      nickname: nickname.trim(),
       youtube_id: id,
-      youtube_url: form.youtube,
       latitude: draftPoint.lat,
       longitude: draftPoint.lng,
-      quiz_answer: quizAnswer,
+      emotion: form.emotion,
+      color: emotionColor[form.emotion],
+      created_at: new Date().toISOString(),
     };
-
-    try {
-      const response = await fetch("/api/stories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        if (response.status === 503 && demoMode) {
-          const localStory: Story = {
-            ...payload,
-            id: `local-${Date.now()}`,
-            color: "#2f276d",
-          };
-          setStories((current) => [localStory, ...current]);
-          setSelectedId(localStory.id);
-          setNotice(
-            "샘플 모드에서 이 기기에만 저장했습니다. Supabase 연결 후에는 모두에게 공개됩니다.",
-          );
-        } else {
-          throw new Error(data.error || "사연을 저장하지 못했습니다.");
-        }
-      } else {
-        setStories((current) => [data.story as Story, ...current]);
-        setSelectedId((data.story as Story).id);
-        setNotice("새 이야기가 지도에 바로 공개됐어요.");
-      }
-      localStorage.setItem("yonsei-nickname", nickname);
-      setForm({
-        place: "내가 고른 자리",
-        title: "",
-        story: "",
-        youtube: "",
-      });
-      setMode("explore");
-      setPanelOpen(true);
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "사연을 저장하지 못했습니다.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    const localStories = [
+      newStory,
+      ...stories.filter((story) => story.id.startsWith("local-")),
+    ];
+    localStorage.setItem("yonsei-neon-stories", JSON.stringify(localStories));
+    localStorage.setItem("yonsei-neon-nickname", nickname.trim());
+    setStories([newStory, ...stories]);
+    setSelectedId(newStory.id);
+    setNotice("새로운 주파수가 이 기기의 지도에 저장됐습니다.");
+    setForm({
+      place: "신촌캠퍼스의 어느 곳",
+      title: "",
+      story: "",
+      youtube: "",
+      emotion: "설렘",
+    });
+    setMode("explore");
+    setPanelOpen(true);
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-theme={darkMode ? "dark" : "light"}>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="연세의 소리 홈">
-          <span className="brand-mark">Y</span>
-          <span>
-            <strong>연세의 소리</strong>
-            <small>YONSEI SOUND MAP</small>
+        <a className="brand" href="#" aria-label="연세 주파수 홈">
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M7 25h5l3-9 5 18 4-25 5 30 5-21 3 7h5" />
+            </svg>
           </span>
+          <strong>YONSEI FREQUENCY</strong>
         </a>
         <nav className="mode-switch" aria-label="서비스 모드">
           <button
             className={mode === "explore" ? "active" : ""}
             onClick={() => enterMode("explore")}
           >
-            <span>⌖</span> 탐험 모드
+            <span>⌁</span> 탐험하기
           </button>
           <button
             className={mode === "create" ? "active" : ""}
             onClick={() => enterMode("create")}
           >
-            <span>＋</span> 제공자 모드
+            <span>＋</span> 사연 남기기
           </button>
         </nav>
-        <div className="profile">
-          <span className="profile-dot">{nickname?.[0] || "ㅇ"}</span>
-          <span>{nickname || "방문자"}</span>
+        <div className="header-actions">
+          <button className="theme-toggle" onClick={toggleTheme} aria-label={darkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}>
+            {darkMode ? "☀" : "☾"}
+          </button>
+          <button
+            className="profile"
+            onClick={() => {
+              setNicknameDraft(nickname);
+              setNicknameOpen(true);
+            }}
+            aria-label="닉네임 변경"
+          >
+            <span className="profile-dot">{nickname?.[0] || "Y"}</span>
+            <span>{nickname || "SET NAME"}</span>
+          </button>
         </div>
       </header>
 
@@ -277,18 +375,61 @@ export default function Home() {
           mode={mode}
           draftPoint={draftPoint}
           userPosition={userPosition}
+          testPositionEnabled={testPositionEnabled}
           onSelect={selectStory}
           onDraftPoint={updateDraftPoint}
+          onTestPosition={updateTestPosition}
         />
+        <div className="map-vignette" />
+        <div className="scan-line" />
 
         <div className="map-status">
-          <span className={demoMode ? "status-dot demo" : "status-dot"} />
-          {demoMode ? "샘플 데이터 모드" : "실시간 공용 지도"}
+          <span className="status-dot" /> 신촌 캠퍼스 · ONLINE
+        </div>
+        <div className="collection-hud" aria-label={`사연 수집률 ${collectionPercent}%`}>
+          <div
+            className="collection-ring"
+            style={{ "--collection-progress": `${collectionPercent * 3.6}deg` } as React.CSSProperties}
+          >
+            <strong>{collectionPercent}%</strong>
+          </div>
+          <span>
+            <small>나의 주파수 도감</small>
+            <b>{discovered.length} / {stories.length} 발견</b>
+          </span>
         </div>
         <button className="location-button" onClick={locateMe}>
           <span className={locating ? "spin" : ""}>⌖</span>
-          {locating ? "위치 찾는 중" : "내 위치"}
+          {locating ? "위치 찾는 중" : "내 위치 찾기"}
         </button>
+        <button
+          className={`demo-location-button ${testPositionEnabled ? "active" : ""}`}
+          onClick={simulateCampusPosition}
+          aria-pressed={testPositionEnabled}
+        >
+          <span className="manual-toggle" aria-hidden="true"><i /></span>
+          수동 위치 변경
+          <b>{testPositionEnabled ? "ON" : "OFF"}</b>
+        </button>
+
+        {mode === "explore" && nearbyStories.length > 0 && (
+          <div className="signal-dock" aria-label="범위 안에서 발견된 사연">
+            <span className="signal-dock-label">NEARBY</span>
+            {nearbyStories.map((story, index) => (
+              <button
+                key={story.id}
+                className={selectedId === story.id ? "active" : ""}
+                style={{ "--signal-color": story.color } as React.CSSProperties}
+                onClick={() => selectStory(story)}
+                aria-label={`${story.place}: ${story.title}`}
+                title={story.title}
+              >
+                <i />
+                <small>{index + 1}</small>
+              </button>
+            ))}
+          </div>
+        )}
 
         {mode === "explore" ? (
           <aside className={`story-panel ${panelOpen ? "open" : ""}`}>
@@ -299,147 +440,184 @@ export default function Home() {
             >
               ×
             </button>
-            {loading ? (
-              <div className="panel-loading">캠퍼스의 이야기를 불러오는 중…</div>
-            ) : selected ? (
+            {selected ? (
               <>
                 <div className="eyebrow">
-                  <span className="live-dot" /> 지금 이곳의 이야기
+                  <span className="live-dot" /> SIGNAL FOUND · {selected.id.slice(-4)}
                 </div>
+                {selected.emotion && (
+                  <span
+                    className="emotion-chip"
+                    style={{ "--emotion-color": selected.color } as React.CSSProperties}
+                  >
+                    {emotionOptions.find((emotion) => emotion.key === selected.emotion)?.icon} {selected.emotion}
+                  </span>
+                )}
                 <p className="place-name">⌖ {selected.place}</p>
                 <h1>{selected.title}</h1>
                 <p className="story-copy">{selected.story}</p>
                 <div className="author-row">
                   <span className="avatar">{selected.nickname[0]}</span>
                   <span>
-                    <small>남긴 사람</small>
+                    <small>TRANSMITTED BY</small>
                     <strong>{selected.nickname}</strong>
                   </span>
                 </div>
                 <div className="player">
                   <iframe
                     key={selected.youtube_id}
-                    src={`https://www.youtube-nocookie.com/embed/${selected.youtube_id}?playsinline=1`}
+                    src={`https://www.youtube.com/embed/${selected.youtube_id}?feature=oembed&playsinline=1&rel=0`}
                     title={`${selected.title}의 노래`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     allowFullScreen
                   />
                 </div>
+                <a
+                  className="youtube-fallback"
+                  href={`https://www.youtube.com/watch?v=${selected.youtube_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  재생이 막히면 YouTube에서 듣기 ↗
+                </a>
                 <div className="discovery-row">
-                  <span>발견한 이야기</span>
+                  <span>CAPTURED SIGNALS</span>
                   <strong>
-                    {discovered.length} / {stories.length}
+                    {discovered.length.toString().padStart(2, "0")} / {stories.length}
                   </strong>
                 </div>
                 <div className="progress">
                   <i
                     style={{
-                      width: `${
-                        stories.length
-                          ? Math.min(
-                              100,
-                              (discovered.length / stories.length) * 100,
-                            )
-                          : 0
-                      }%`,
+                      width: `${stories.length ? Math.min(100, (discovered.length / stories.length) * 100) : 0}%`,
                     }}
                   />
                 </div>
                 <p className="location-note">{notice}</p>
               </>
             ) : (
-              <div className="panel-loading">아직 등록된 이야기가 없어요.</div>
+              <div className="panel-loading">NO SIGNAL</div>
             )}
           </aside>
         ) : (
           <aside className="story-panel create-panel open">
             <div className="eyebrow">
-              <span className="live-dot purple" /> 새로운 이야기 남기기
+              <span className="live-dot magenta" /> NEW TRANSMISSION
             </div>
-            <h1>이 자리에 어떤 기억이 있나요?</h1>
+            <h1>이 장소에 기억을 송신하세요.</h1>
             <p className="create-help">
-              실제 지도를 눌러 핀을 놓고, 그곳에 어울리는 노래와 이야기를
-              들려주세요.
+              지도를 클릭하거나 지도 위 핀을 직접 끌어 장소를 정한 뒤, 노래와 사연을 남겨주세요.
             </p>
             <form onSubmit={submitStory}>
+              <fieldset className="location-method-fieldset">
+                <legend>PLACE METHOD · 장소 선택</legend>
+                <div className="location-method-options">
+                  <button
+                    type="button"
+                    className={locationMethod === "pin" ? "active" : ""}
+                    onClick={() => setLocationMethod("pin")}
+                  >
+                    <span>⌖</span>
+                    <b>직접 찍기</b>
+                    <small>지도 클릭 또는 핀 이동</small>
+                  </button>
+                  <button
+                    type="button"
+                    className={locationMethod === "current" ? "active" : ""}
+                    onClick={useCurrentLocationForStory}
+                  >
+                    <span>◎</span>
+                    <b>{locating ? "찾는 중…" : "현 위치"}</b>
+                    <small>GPS 위치로 바로 지정</small>
+                  </button>
+                </div>
+              </fieldset>
               <label>
-                닉네임
+                CALL SIGN · 닉네임
                 <input
                   value={nickname}
                   onChange={(event) => setNickname(event.target.value)}
-                  placeholder="예: 느린산책"
+                  placeholder="예: NIGHTWALKER"
                   maxLength={20}
                   required
                 />
               </label>
               <label>
-                장소 이름
+                LOCATION · 장소
                 <input
                   value={form.place}
-                  onChange={(event) =>
-                    setForm({ ...form, place: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, place: event.target.value })}
                   maxLength={40}
                   required
                 />
               </label>
               <label>
-                사연 제목
+                SUBJECT · 제목
                 <input
                   value={form.title}
-                  onChange={(event) =>
-                    setForm({ ...form, title: event.target.value })
-                  }
-                  placeholder="한 문장으로 기억을 붙여주세요"
+                  onChange={(event) => setForm({ ...form, title: event.target.value })}
+                  placeholder="기억에 이름을 붙여주세요"
                   maxLength={60}
                   required
                 />
               </label>
+              <fieldset className="emotion-fieldset">
+                <legend>MOOD · 이 사연의 감정</legend>
+                <div className="emotion-options">
+                  {emotionOptions.map((emotion) => (
+                    <button
+                      key={emotion.key}
+                      type="button"
+                      className={form.emotion === emotion.key ? "active" : ""}
+                      style={{ "--emotion-color": emotion.color } as React.CSSProperties}
+                      onClick={() => setForm({ ...form, emotion: emotion.key })}
+                      aria-pressed={form.emotion === emotion.key}
+                    >
+                      <i>{emotion.icon}</i>
+                      {emotion.key}
+                    </button>
+                  ))}
+                </div>
+                <small>선택한 감정 색으로 지도 핀과 신호 아이콘이 표시됩니다.</small>
+              </fieldset>
               <label>
-                이야기
+                MESSAGE · 이야기
                 <textarea
                   value={form.story}
-                  onChange={(event) =>
-                    setForm({ ...form, story: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, story: event.target.value })}
                   placeholder="그날의 공기와 마음을 들려주세요"
                   maxLength={500}
                   required
                 />
               </label>
               <label>
-                YouTube 링크
+                AUDIO SOURCE · YouTube
                 <input
                   type="url"
                   value={form.youtube}
-                  onChange={(event) =>
-                    setForm({ ...form, youtube: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, youtube: event.target.value })}
                   placeholder="https://youtu.be/..."
                   required
                 />
               </label>
               <div className="coordinate-readout">
-                <span>선택한 위치</span>
+                <span>TARGET COORDINATES</span>
                 <strong>
                   {draftPoint.lat.toFixed(5)}, {draftPoint.lng.toFixed(5)}
                 </strong>
               </div>
-              {submitError && <p className="form-error">{submitError}</p>}
-              <button
-                className="submit-story"
-                type="submit"
-                disabled={submitting}
-              >
-                {submitting ? "공개하는 중…" : "지도에 바로 공개하기"}
+              {formError && <p className="form-error">{formError}</p>}
+              <button className="submit-story" type="submit">
+                TRANSMIT TO LOCAL MAP ↗
               </button>
             </form>
           </aside>
         )}
 
-        {!panelOpen && mode === "explore" && (
+        {!panelOpen && mode === "explore" && selected && (
           <button className="reopen-panel" onClick={() => setPanelOpen(true)}>
-            선택한 이야기 보기
+            OPEN SIGNAL
           </button>
         )}
       </section>
@@ -449,16 +627,14 @@ export default function Home() {
           className={mode === "explore" ? "active" : ""}
           onClick={() => enterMode("explore")}
         >
-          <span>⌖</span>탐험
+          <span>◎</span>SCAN
         </button>
-        <button className="mobile-locate" onClick={locateMe}>
-          ◎
-        </button>
+        <button className="mobile-locate" onClick={locateMe}>⌖</button>
         <button
           className={mode === "create" ? "active" : ""}
           onClick={() => enterMode("create")}
         >
-          <span>＋</span>기록
+          <span>＋</span>DROP
         </button>
       </div>
 
@@ -472,28 +648,51 @@ export default function Home() {
             >
               ×
             </button>
-            <div className="quiz-badge">YONSEI CHECK</div>
-            <h2>연세를 아는 당신에게</h2>
-            <p>
-              연세대학교의 시작이 된 광혜원이 설립된 해는 언제일까요?
-            </p>
+            <div className="quiz-badge">ACCESS CHECK</div>
+            <h2>연세 주파수 인증</h2>
+            <p>연세대학교의 시작이 된 광혜원이 설립된 해는 언제일까요?</p>
             <div className="quiz-options">
-              {quizOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => answerQuiz(option.value)}
-                >
-                  {option.label}
+              {[
+                ["1885년", "1885"],
+                ["1905년", "1905"],
+                ["1946년", "1946"],
+              ].map(([label, value]) => (
+                <button key={value} onClick={() => answerQuiz(value)}>
+                  {label}
                 </button>
               ))}
             </div>
-            {quizError && (
-              <p className="quiz-error">
-                아쉬워요! 캠퍼스의 역사를 한 번 더 떠올려보세요.
-              </p>
-            )}
-            <small>퀴즈 답은 사연 등록 시 서버에서도 다시 확인합니다.</small>
+            {quizError && <p className="quiz-error">ACCESS DENIED · 다시 시도해주세요.</p>}
+            <small>간이 인증 후 이 기기의 지도에 사연을 남길 수 있습니다.</small>
           </div>
+        </div>
+      )}
+
+      {nicknameOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="nickname-title">
+          <form className="quiz-card nickname-card" onSubmit={saveNickname}>
+            {nickname && (
+              <button className="modal-close" type="button" onClick={() => setNicknameOpen(false)} aria-label="닫기">
+                ×
+              </button>
+            )}
+            <div className="nickname-wave" aria-hidden="true">
+              <i /><i /><i /><i /><i />
+            </div>
+            <div className="quiz-badge">TUNE IN</div>
+            <h2 id="nickname-title">당신의 주파수 이름</h2>
+            <p>지도에서 사용할 닉네임을 정해주세요. 언제든 오른쪽 위 프로필에서 바꿀 수 있어요.</p>
+            <input
+              className="nickname-input"
+              value={nicknameDraft}
+              onChange={(event) => setNicknameDraft(event.target.value)}
+              placeholder="예: 파란새, 밤산책"
+              maxLength={20}
+              autoFocus
+              required
+            />
+            <button className="nickname-submit" type="submit">주파수 입장하기</button>
+          </form>
         </div>
       )}
     </main>
