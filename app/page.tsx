@@ -9,6 +9,26 @@ type Mode = "explore" | "create";
 type LatLng = { lat: number; lng: number };
 type LocationMethod = "pin" | "current";
 
+type IconName = "scan" | "plus" | "sun" | "moon" | "locate" | "pin" | "close";
+
+function UiIcon({ name, className = "" }: { name: IconName; className?: string }) {
+  const paths: Record<IconName, React.ReactNode> = {
+    scan: <><path d="M4 12h3l2-5 3 10 3-7 2 2h3" /><path d="M5 5v3M5 16v3M19 5v3M19 16v3" /></>,
+    plus: <path d="M12 5v14M5 12h14" />,
+    sun: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></>,
+    moon: <path d="M20 15.1A8.5 8.5 0 0 1 8.9 4a8.5 8.5 0 1 0 11.1 11.1Z" />,
+    locate: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M18.36 5.64l-2.12 2.12M7.76 16.24l-2.12 2.12M5.64 5.64l2.12 2.12M16.24 16.24l2.12 2.12" /></>,
+    pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2.2" /></>,
+    close: <path d="m7 7 10 10M17 7 7 17" />,
+  };
+
+  return (
+    <svg className={`ui-icon ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
 const emotionOptions: Array<{ key: Emotion; color: string; icon: string }> = [
   { key: "설렘", color: "#ff9fbd", icon: "♡" },
   { key: "그리움", color: "#a99bdd", icon: "◐" },
@@ -58,7 +78,7 @@ export default function Home() {
   const [nickname, setNickname] = useState("");
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [nicknameOpen, setNicknameOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [draftPoint, setDraftPoint] = useState<LatLng>(CAMPUS_CENTER);
   const [locationMethod, setLocationMethod] = useState<LocationMethod>("pin");
   const [userPosition, setUserPosition] = useState<LatLng>();
@@ -112,7 +132,7 @@ export default function Home() {
         setNickname(savedNickname);
         setNicknameDraft(savedNickname);
         setNicknameOpen(!savedNickname);
-        setDarkMode(localStorage.getItem("yonsei-frequency-theme") === "dark");
+        setDarkMode(localStorage.getItem("yonsei-frequency-theme") !== "light");
       } catch {
         localStorage.removeItem("yonsei-neon-stories");
         localStorage.removeItem("yonsei-gps-discovered");
@@ -394,18 +414,18 @@ export default function Home() {
             className={mode === "explore" ? "active" : ""}
             onClick={() => enterMode("explore")}
           >
-            <span>⌁</span> 탐험하기
+            <UiIcon name="scan" /> 탐험하기
           </button>
           <button
             className={mode === "create" ? "active" : ""}
             onClick={() => enterMode("create")}
           >
-            <span>＋</span> 사연 남기기
+            <UiIcon name="plus" /> 사연 남기기
           </button>
         </nav>
         <div className="header-actions">
           <button className="theme-toggle" onClick={toggleTheme} aria-label={darkMode ? "라이트 모드로 전환" : "다크 모드로 전환"}>
-            {darkMode ? "☀" : "☾"}
+            <UiIcon name={darkMode ? "sun" : "moon"} />
           </button>
           <button
             className="profile"
@@ -452,7 +472,7 @@ export default function Home() {
           </span>
         </div>
         <button className="location-button" onClick={locateMe}>
-          <span className={locating ? "spin" : ""}>⌖</span>
+          <UiIcon name="locate" className={locating ? "spin" : ""} />
           {locating ? "위치 찾는 중" : "내 위치 찾기"}
         </button>
         <button
@@ -491,7 +511,7 @@ export default function Home() {
               onClick={() => setPanelOpen(false)}
               aria-label="이야기 닫기"
             >
-              ×
+              <UiIcon name="close" />
             </button>
             {selected ? (
               <>
@@ -506,7 +526,7 @@ export default function Home() {
                     {emotionOptions.find((emotion) => emotion.key === selected.emotion)?.icon} {selected.emotion}
                   </span>
                 )}
-                <p className="place-name">⌖ {selected.place}</p>
+                <p className="place-name"><UiIcon name="pin" /> {selected.place}</p>
                 <h1>{selected.title}</h1>
                 <p className="story-copy">{selected.story}</p>
                 <div className="author-row">
@@ -604,7 +624,7 @@ export default function Home() {
                     className={locationMethod === "pin" ? "active" : ""}
                     onClick={() => setLocationMethod("pin")}
                   >
-                    <span>⌖</span>
+                    <UiIcon name="pin" />
                     <b>직접 찍기</b>
                     <small>지도 클릭 또는 핀 이동</small>
                   </button>
@@ -613,7 +633,7 @@ export default function Home() {
                     className={locationMethod === "current" ? "active" : ""}
                     onClick={useCurrentLocationForStory}
                   >
-                    <span>◎</span>
+                    <UiIcon name="locate" />
                     <b>{locating ? "찾는 중…" : "현 위치"}</b>
                     <small>GPS 위치로 바로 지정</small>
                   </button>
@@ -726,14 +746,14 @@ export default function Home() {
           className={mode === "explore" ? "active" : ""}
           onClick={() => enterMode("explore")}
         >
-          <span>◎</span>SCAN
+          <UiIcon name="scan" />SCAN
         </button>
-        <button className="mobile-locate" onClick={locateMe}>⌖</button>
+        <button className="mobile-locate" onClick={locateMe} aria-label="내 위치 찾기"><UiIcon name="locate" /></button>
         <button
           className={mode === "create" ? "active" : ""}
           onClick={() => enterMode("create")}
         >
-          <span>＋</span>DROP
+          <UiIcon name="plus" />DROP
         </button>
       </div>
 

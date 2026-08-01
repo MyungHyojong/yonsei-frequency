@@ -242,6 +242,7 @@ button { color: inherit; }
 .fallback-pin.selected { z-index: 6; transform: translate(-50%, -50%) rotate(-45deg) scale(1.25); }
 
 .real-map-pin {
+  position: relative;
   width: 42px;
   height: 42px;
   border: 2px solid #fff;
@@ -546,9 +547,31 @@ button { color: inherit; }
   border-radius: 50%;
   background: #f7f3fd;
   color: #756987;
-  font-size: 20px;
   cursor: pointer;
 }
+
+.ui-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.theme-toggle { display: grid; place-items: center; }
+.theme-toggle .ui-icon { width: 17px; height: 17px; }
+.mode-switch button { gap: 8px; }
+.mode-switch button .ui-icon { width: 16px; height: 16px; }
+.location-button .ui-icon { width: 17px; height: 17px; }
+.place-name { display: flex; align-items: center; gap: 6px; }
+.place-name .ui-icon { width: 14px; height: 14px; }
+.panel-close { display: grid; place-items: center; }
+.panel-close .ui-icon { width: 18px; height: 18px; }
+.location-method-options .ui-icon { width: 23px; height: 23px; }
+.mobile-bar .ui-icon { width: 19px; height: 19px; }
+.mobile-locate .ui-icon { width: 22px; height: 22px; }
 .profile {
   justify-self: auto;
   border: 0;
@@ -1019,15 +1042,32 @@ html, body, .app-shell { background: #fffaf5; color: var(--text); }
 
 /* Minimal glowing story dots */
 .real-map-pin {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   padding: 0;
-  border: 3px solid rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.95);
   border-radius: 50%;
   transform: scale(var(--map-pin-scale, 1));
   transform-origin: center;
-  background: var(--pin-color);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pin-color) 20%, transparent), 0 0 14px var(--pin-color);
+  background: radial-gradient(circle at 38% 32%, #fff 0 10%, var(--pin-color) 24% 58%, color-mix(in srgb, var(--pin-color) 62%, #222) 100%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pin-color) 18%, transparent), 0 0 16px color-mix(in srgb, var(--pin-color) 75%, transparent);
+}
+.real-map-pin::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 1px solid color-mix(in srgb, var(--pin-color) 55%, transparent);
+  border-radius: 50%;
+  opacity: .65;
+  animation: beacon-pulse 2.8s ease-out infinite;
+}
+.real-map-pin::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.8);
+  box-shadow: 0 0 6px #fff;
 }
 .real-map-pin span { display: none; }
 .real-map-pin:hover,
@@ -1036,13 +1076,25 @@ html, body, .app-shell { background: #fffaf5; color: var(--text); }
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--pin-color) 24%, transparent), 0 0 20px var(--pin-color);
 }
 .fallback-pin {
-  width: 15px;
-  height: 15px;
+  width: 17px;
+  height: 17px;
   padding: 0;
-  border: 3px solid rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.95);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   font-size: 0;
+}
+.fallback-pin::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.82);
+  box-shadow: 0 0 6px #fff;
+}
+@keyframes beacon-pulse {
+  0% { transform: scale(.72); opacity: .72; }
+  70%, 100% { transform: scale(1.45); opacity: 0; }
 }
 .fallback-pin.selected {
   transform: translate(-50%, -50%) scale(1.45);
