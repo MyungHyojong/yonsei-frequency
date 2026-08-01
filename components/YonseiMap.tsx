@@ -121,7 +121,6 @@ export function YonseiMap({
       const button = document.createElement("button");
       button.className = `real-map-pin ${selectedId === story.id ? "selected" : ""}`;
       button.style.setProperty("--pin-color", story.color);
-      button.innerHTML = "<span>♫</span>";
       button.setAttribute("aria-label", `${story.place}: ${story.title}`);
       button.onclick = () => onSelect(story);
       overlays.push(
@@ -218,9 +217,7 @@ export function YonseiMap({
             }}
             onClick={() => onSelect(story)}
             aria-label={`${story.place}: ${story.title}`}
-          >
-            ♫
-          </button>
+          />
         ))}
       </div>
     );

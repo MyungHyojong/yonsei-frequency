@@ -69,11 +69,15 @@ export default function Home() {
     "GPS를 활성화하고 캠퍼스의 숨겨진 주파수를 탐색하세요.",
   );
   const [formError, setFormError] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     place: "신촌캠퍼스의 어느 곳",
     title: "",
     story: "",
     youtube: "",
+    password: "",
     emotion: "설렘" as Emotion,
   });
 
@@ -86,12 +90,19 @@ export default function Home() {
         const savedDiscovered = JSON.parse(
           localStorage.getItem("yonsei-gps-discovered") || "[]",
         ) as string[];
+        const hiddenStoryIds = JSON.parse(
+          localStorage.getItem("yonsei-hidden-stories") || "[]",
+        ) as string[];
         const normalizedLocalStories = localStories.map((story) => ({
           ...story,
+          password: story.password || "3141",
           emotion: story.emotion || ("고요" as Emotion),
           color: story.emotion ? emotionColor[story.emotion] : story.color,
         }));
-        const nextStories = [...normalizedLocalStories, ...baseStories];
+        const hiddenSet = new Set(hiddenStoryIds);
+        const nextStories = [...normalizedLocalStories, ...baseStories].filter(
+          (story) => !hiddenSet.has(story.id),
+        );
         const validStoryIds = new Set(nextStories.map((story) => story.id));
         const validDiscovered = savedDiscovered.filter((id) => validStoryIds.has(id));
         setStories(nextStories);
@@ -150,7 +161,47 @@ export default function Home() {
   const selectStory = useCallback((story: Story) => {
     setSelectedId(story.id);
     setPanelOpen(true);
+    setDeleteOpen(false);
+    setDeletePassword("");
+    setDeleteError("");
   }, []);
+
+  function deleteSelectedStory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    if (deletePassword !== selected.password) {
+      setDeleteError("비밀번호가 맞지 않습니다.");
+      return;
+    }
+
+    const nextStories = stories.filter((story) => story.id !== selected.id);
+    setStories(nextStories);
+    setSelectedId("");
+    setPanelOpen(false);
+    setDeleteOpen(false);
+    setDeletePassword("");
+    setDeleteError("");
+
+    if (selected.id.startsWith("local-")) {
+      const localStories = nextStories.filter((story) => story.id.startsWith("local-"));
+      localStorage.setItem("yonsei-neon-stories", JSON.stringify(localStories));
+    } else {
+      const hiddenStoryIds = JSON.parse(
+        localStorage.getItem("yonsei-hidden-stories") || "[]",
+      ) as string[];
+      localStorage.setItem(
+        "yonsei-hidden-stories",
+        JSON.stringify(Array.from(new Set([...hiddenStoryIds, selected.id]))),
+      );
+    }
+
+    setDiscovered((current) => {
+      const next = current.filter((id) => id !== selected.id);
+      localStorage.setItem("yonsei-gps-discovered", JSON.stringify(next));
+      return next;
+    });
+    setNotice("사연이 이 기기의 지도에서 삭제됐습니다.");
+  }
 
   const updateDraftPoint = useCallback((point: LatLng) => {
     setDraftPoint(point);
@@ -301,6 +352,7 @@ export default function Home() {
       youtube_id: id,
       latitude: draftPoint.lat,
       longitude: draftPoint.lng,
+      password: form.password,
       emotion: form.emotion,
       color: emotionColor[form.emotion],
       created_at: new Date().toISOString(),
@@ -319,6 +371,7 @@ export default function Home() {
       title: "",
       story: "",
       youtube: "",
+      password: "",
       emotion: "설렘",
     });
     setMode("explore");
@@ -481,6 +534,39 @@ export default function Home() {
                 >
                   재생이 막히면 YouTube에서 듣기 ↗
                 </a>
+                <div className="story-delete-area">
+                  {!deleteOpen ? (
+                    <button
+                      type="button"
+                      className="story-delete-toggle"
+                      onClick={() => {
+                        setDeleteOpen(true);
+                        setDeleteError("");
+                      }}
+                    >
+                      이 사연 삭제하기
+                    </button>
+                  ) : (
+                    <form className="story-delete-form" onSubmit={deleteSelectedStory}>
+                      <label>
+                        삭제 비밀번호
+                        <input
+                          type="password"
+                          value={deletePassword}
+                          onChange={(event) => setDeletePassword(event.target.value)}
+                          placeholder="등록할 때 설정한 비밀번호"
+                          autoComplete="off"
+                          required
+                        />
+                      </label>
+                      {deleteError && <p>{deleteError}</p>}
+                      <div>
+                        <button type="button" onClick={() => setDeleteOpen(false)}>취소</button>
+                        <button type="submit">삭제</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
                 <div className="discovery-row">
                   <span>CAPTURED SIGNALS</span>
                   <strong>
@@ -598,6 +684,19 @@ export default function Home() {
                   value={form.youtube}
                   onChange={(event) => setForm({ ...form, youtube: event.target.value })}
                   placeholder="https://youtu.be/..."
+                  required
+                />
+              </label>
+              <label>
+                DELETE PASSWORD · 삭제 비밀번호
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                  placeholder="나중에 이 사연을 삭제할 때 사용합니다"
+                  minLength={4}
+                  maxLength={20}
+                  autoComplete="new-password"
                   required
                 />
               </label>

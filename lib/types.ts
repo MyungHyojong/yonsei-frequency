@@ -10,6 +10,7 @@ export type Story = {
   latitude: number;
   longitude: number;
   color: string;
+  password: string;
   emotion?: Emotion;
   status?: "published" | "hidden";
   created_at?: string;
