@@ -12,6 +12,7 @@ type KakaoMap = {
   setLevel(level: number): void;
   getLevel(): number;
 };
+type KakaoDrawable = { setMap(map: KakaoMap | null): void };
 type KakaoMarker = {
   setMap(map: KakaoMap | null): void;
   getPosition(): KakaoLatLng;
@@ -33,7 +34,18 @@ declare global {
           content: HTMLElement;
           yAnchor: number;
           zIndex: number;
-        }) => { setMap(map: KakaoMap | null): void };
+        }) => KakaoDrawable;
+        Circle: new (options: {
+          map: KakaoMap;
+          center: unknown;
+          radius: number;
+          strokeWeight: number;
+          strokeColor: string;
+          strokeOpacity: number;
+          strokeStyle: string;
+          fillColor: string;
+          fillOpacity: number;
+        }) => KakaoDrawable;
         Marker: new (options: {
           map: KakaoMap;
           position: unknown;
@@ -76,7 +88,7 @@ export function YonseiMap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<KakaoMap | null>(null);
-  const overlaysRef = useRef<Array<{ setMap(map: KakaoMap | null): void }>>([]);
+  const overlaysRef = useRef<KakaoDrawable[]>([]);
   const [sdkReady, setSdkReady] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -95,6 +107,8 @@ export function YonseiMap({
         const level = map.getLevel();
         const scale = Math.max(0.38, Math.min(1, 1 - (level - 3) * 0.1));
         containerRef.current?.style.setProperty("--map-pin-scale", scale.toString());
+        const radarSize = Math.max(34, Math.min(230, 116 / Math.pow(2, level - 3)));
+        containerRef.current?.style.setProperty("--radar-size", `${radarSize}px`);
       };
       syncPinScale();
       window.kakao.maps.event.addListener(map, "zoom_changed", syncPinScale);
@@ -115,7 +129,7 @@ export function YonseiMap({
     const kakao = window.kakao;
     if (!map || !kakao) return;
     overlaysRef.current.forEach((overlay) => overlay.setMap(null));
-    const overlays: Array<{ setMap(map: KakaoMap | null): void }> = [];
+    const overlays: KakaoDrawable[] = [];
 
     stories.forEach((story) => {
       const button = document.createElement("button");
@@ -147,6 +161,34 @@ export function YonseiMap({
       overlays.push(draftMarker);
     }
 
+    if (userPosition) {
+      const center = new kakao.maps.LatLng(userPosition.lat, userPosition.lng);
+      const radar = document.createElement("div");
+      radar.className = `gps-radar ${testPositionEnabled ? "test" : ""}`;
+      radar.innerHTML = '<span class="gps-radar-sweep"></span><span class="gps-radar-core"></span><b>50m</b>';
+
+      overlays.push(
+        new kakao.maps.Circle({
+          map,
+          center,
+          radius: 50,
+          strokeWeight: 1,
+          strokeColor: testPositionEnabled ? "#f2a7c0" : "#75e2d7",
+          strokeOpacity: 0.9,
+          strokeStyle: "solid",
+          fillColor: testPositionEnabled ? "#f2a7c0" : "#75e2d7",
+          fillOpacity: 0.08,
+        }),
+        new kakao.maps.CustomOverlay({
+          map,
+          position: center,
+          content: radar,
+          yAnchor: 0.5,
+          zIndex: 8,
+        }),
+      );
+    }
+
     if (userPosition && testPositionEnabled) {
       const testMarker = new kakao.maps.Marker({
         map,
@@ -158,18 +200,6 @@ export function YonseiMap({
         onTestPosition({ lat: position.getLat(), lng: position.getLng() });
       });
       overlays.push(testMarker);
-    } else if (userPosition) {
-      const userDot = document.createElement("div");
-      userDot.className = "user-location-dot";
-      overlays.push(
-        new kakao.maps.CustomOverlay({
-          map,
-          position: new kakao.maps.LatLng(userPosition.lat, userPosition.lng),
-          content: userDot,
-          yAnchor: 0.5,
-          zIndex: 9,
-        }),
-      );
     }
     overlaysRef.current = overlays;
   }, [

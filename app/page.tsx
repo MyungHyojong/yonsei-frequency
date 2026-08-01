@@ -404,7 +404,11 @@ export default function Home() {
         <a className="brand" href="#" aria-label="연세 주파수 홈">
           <span className="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 48 48" role="img">
-              <path d="M7 25h5l3-9 5 18 4-25 5 30 5-21 3 7h5" />
+              <path d="M13 15 34 7" />
+              <rect x="7" y="15" width="34" height="25" rx="7" />
+              <circle cx="31.5" cy="27.5" r="6.5" />
+              <circle cx="31.5" cy="27.5" r="2" />
+              <path d="M13 23h8M13 28h8M13 33h8" />
             </svg>
           </span>
           <strong>YONSEI FREQUENCY</strong>
