@@ -17,7 +17,7 @@ function UiIcon({ name, className = "" }: { name: IconName; className?: string }
     plus: <path d="M12 5v14M5 12h14" />,
     sun: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></>,
     moon: <path d="M20 15.1A8.5 8.5 0 0 1 8.9 4a8.5 8.5 0 1 0 11.1 11.1Z" />,
-    locate: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M18.36 5.64l-2.12 2.12M7.76 16.24l-2.12 2.12M5.64 5.64l2.12 2.12M16.24 16.24l2.12 2.12" /></>,
+    locate: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>,
     pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2.2" /></>,
     close: <path d="m7 7 10 10M17 7 7 17" />,
   };
@@ -128,7 +128,9 @@ export default function Home() {
         setStories(nextStories);
         setDiscovered(validDiscovered);
         localStorage.setItem("yonsei-gps-discovered", JSON.stringify(validDiscovered));
-        const savedNickname = localStorage.getItem("yonsei-neon-nickname") || "";
+        const storedNickname = localStorage.getItem("yonsei-neon-nickname") || "";
+        const savedNickname = storedNickname === "명효종" ? "" : storedNickname;
+        if (storedNickname === "명효종") localStorage.removeItem("yonsei-neon-nickname");
         setNickname(savedNickname);
         setNicknameDraft(savedNickname);
         setNicknameOpen(!savedNickname);
@@ -750,14 +752,16 @@ export default function Home() {
           className={mode === "explore" ? "active" : ""}
           onClick={() => enterMode("explore")}
         >
-          <UiIcon name="scan" />SCAN
+          <UiIcon name="scan" /><span>탐험</span>
         </button>
-        <button className="mobile-locate" onClick={locateMe} aria-label="내 위치 찾기"><UiIcon name="locate" /></button>
+        <button className="mobile-locate" onClick={locateMe} aria-label="내 위치 찾기">
+          <UiIcon name="locate" /><span>{locating ? "찾는 중" : "내 위치"}</span>
+        </button>
         <button
           className={mode === "create" ? "active" : ""}
           onClick={() => enterMode("create")}
         >
-          <UiIcon name="plus" />DROP
+          <UiIcon name="plus" /><span>기록</span>
         </button>
       </div>
 
