@@ -82,6 +82,7 @@ export default function Home() {
   const [draftPoint, setDraftPoint] = useState<LatLng>(CAMPUS_CENTER);
   const [locationMethod, setLocationMethod] = useState<LocationMethod>("pin");
   const [userPosition, setUserPosition] = useState<LatLng>();
+  const [locationFocusRequest, setLocationFocusRequest] = useState(0);
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [locating, setLocating] = useState(false);
   const [notice, setNotice] = useState(
@@ -293,6 +294,7 @@ export default function Home() {
             }) <= 50,
         );
         setUserPosition(position);
+        setLocationFocusRequest((request) => request + 1);
         saveDiscoveries(nearby.map((story) => story.id));
         setNotice(
           nearby.length
@@ -424,6 +426,7 @@ export default function Home() {
           mode={mode}
           draftPoint={draftPoint}
           userPosition={userPosition}
+          locationFocusRequest={locationFocusRequest}
           onSelect={selectStory}
           onDraftPoint={updateDraftPoint}
         />

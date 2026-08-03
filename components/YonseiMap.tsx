@@ -9,6 +9,7 @@ type LatLng = { lat: number; lng: number };
 type KakaoLatLng = { getLat(): number; getLng(): number };
 type KakaoMap = {
   setCenter(position: unknown): void;
+  panTo(position: unknown): void;
   setLevel(level: number): void;
   getLevel(): number;
 };
@@ -69,6 +70,7 @@ type Props = {
   mode: "explore" | "create";
   draftPoint: LatLng;
   userPosition?: LatLng;
+  locationFocusRequest: number;
   onSelect(story: Story): void;
   onDraftPoint(point: LatLng): void;
 };
@@ -79,6 +81,7 @@ export function YonseiMap({
   mode,
   draftPoint,
   userPosition,
+  locationFocusRequest,
   onSelect,
   onDraftPoint,
 }: Props) {
@@ -200,9 +203,9 @@ export function YonseiMap({
     const map = mapRef.current;
     const kakao = window.kakao;
     if (!map || !kakao || !userPosition) return;
-    map.setCenter(new kakao.maps.LatLng(userPosition.lat, userPosition.lng));
     map.setLevel(3);
-  }, [mapReady, userPosition]);
+    map.panTo(new kakao.maps.LatLng(userPosition.lat, userPosition.lng));
+  }, [mapReady, userPosition, locationFocusRequest]);
 
   if (!apiKey || loadFailed) {
     return (
