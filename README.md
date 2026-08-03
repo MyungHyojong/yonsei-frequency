@@ -1,4 +1,4 @@
-# YONSEI AFTERDARK
+# YONSEI WALKING RADIO
 
 연세대학교 신촌캠퍼스의 장소에 음악과 사연을 남기고, GPS로 가까운 이야기를 발견하는 로컬 데모입니다.
 

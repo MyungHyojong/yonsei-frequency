@@ -82,7 +82,6 @@ export default function Home() {
   const [draftPoint, setDraftPoint] = useState<LatLng>(CAMPUS_CENTER);
   const [locationMethod, setLocationMethod] = useState<LocationMethod>("pin");
   const [userPosition, setUserPosition] = useState<LatLng>();
-  const [testPositionEnabled, setTestPositionEnabled] = useState(false);
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [locating, setLocating] = useState(false);
   const [notice, setNotice] = useState(
@@ -240,7 +239,6 @@ export default function Home() {
       setSelectedId("");
       setPanelOpen(false);
     } else {
-      setTestPositionEnabled(false);
       setPanelOpen(true);
     }
   }
@@ -254,7 +252,6 @@ export default function Home() {
     setQuizError(false);
     setQuizOpen(false);
     setMode("create");
-    setTestPositionEnabled(false);
     setPanelOpen(true);
   }
 
@@ -266,41 +263,12 @@ export default function Home() {
     });
   }, []);
 
-  const updateTestPosition = useCallback((position: LatLng) => {
-    const nearby = stories.filter(
-      (story) =>
-        distanceMeters(position, {
-          lat: story.latitude,
-          lng: story.longitude,
-        }) <= 50,
-    );
-    setUserPosition(position);
-    setNotice(`테스트 마커 위치에서 ${nearby.length}개의 사연 신호를 찾았습니다.`);
-    setSelectedId("");
-    setPanelOpen(false);
-  }, [stories]);
-
-  function simulateCampusPosition() {
-    if (testPositionEnabled) {
-      setTestPositionEnabled(false);
-      setUserPosition(undefined);
-      setSelectedId("");
-      setPanelOpen(false);
-      setNotice("수동 위치 변경을 종료했습니다.");
-      return;
-    }
-    setTestPositionEnabled(true);
-    updateTestPosition(CAMPUS_CENTER);
-    setNotice("지도 위 테스트 마커를 마우스로 잡아 원하는 위치로 이동하세요.");
-  }
-
   function locateMe() {
     if (!navigator.geolocation) {
       setNotice("이 브라우저에서는 GPS를 사용할 수 없습니다.");
       return;
     }
     setLocating(true);
-    setTestPositionEnabled(false);
     setNotice("위성 신호를 탐색하는 중…");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
@@ -344,7 +312,6 @@ export default function Home() {
         const position = { lat: coords.latitude, lng: coords.longitude };
         setDraftPoint(position);
         setUserPosition(position);
-        setTestPositionEnabled(false);
         setNotice("현재 위치를 사연 장소로 설정했습니다.");
         setLocating(false);
       },
@@ -403,17 +370,8 @@ export default function Home() {
   return (
     <main className="app-shell" data-theme={darkMode ? "dark" : "light"}>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="연세 주파수 홈">
-          <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48" role="img">
-              <path d="M13 15 34 7" />
-              <rect x="7" y="15" width="34" height="25" rx="7" />
-              <circle cx="31.5" cy="27.5" r="6.5" />
-              <circle cx="31.5" cy="27.5" r="2" />
-              <path d="M13 23h8M13 28h8M13 33h8" />
-            </svg>
-          </span>
-          <strong>YONSEI FREQUENCY</strong>
+        <a className="brand" href="#" aria-label="연세 워킹 라디오 홈">
+          <strong>YONSEI WALKING RADIO</strong>
         </a>
         <nav className="mode-switch" aria-label="서비스 모드">
           <button
@@ -454,17 +412,12 @@ export default function Home() {
           mode={mode}
           draftPoint={draftPoint}
           userPosition={userPosition}
-          testPositionEnabled={testPositionEnabled}
           onSelect={selectStory}
           onDraftPoint={updateDraftPoint}
-          onTestPosition={updateTestPosition}
         />
         <div className="map-vignette" />
         <div className="scan-line" />
 
-        <div className="map-status">
-          <span className="status-dot" /> 신촌 캠퍼스 · ONLINE
-        </div>
         <div className="collection-hud" aria-label={`사연 수집률 ${collectionPercent}%`}>
           <div
             className="collection-ring"
@@ -480,15 +433,6 @@ export default function Home() {
         <button className="location-button" onClick={locateMe}>
           <UiIcon name="locate" className={locating ? "spin" : ""} />
           {locating ? "위치 찾는 중" : "내 위치 찾기"}
-        </button>
-        <button
-          className={`demo-location-button ${testPositionEnabled ? "active" : ""}`}
-          onClick={simulateCampusPosition}
-          aria-pressed={testPositionEnabled}
-        >
-          <span className="manual-toggle" aria-hidden="true"><i /></span>
-          수동 위치 변경
-          <b>{testPositionEnabled ? "ON" : "OFF"}</b>
         </button>
 
         {mode === "explore" && nearbyStories.length > 0 && (

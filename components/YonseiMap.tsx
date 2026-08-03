@@ -69,10 +69,8 @@ type Props = {
   mode: "explore" | "create";
   draftPoint: LatLng;
   userPosition?: LatLng;
-  testPositionEnabled: boolean;
   onSelect(story: Story): void;
   onDraftPoint(point: LatLng): void;
-  onTestPosition(point: LatLng): void;
 };
 
 export function YonseiMap({
@@ -81,10 +79,8 @@ export function YonseiMap({
   mode,
   draftPoint,
   userPosition,
-  testPositionEnabled,
   onSelect,
   onDraftPoint,
-  onTestPosition,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<KakaoMap | null>(null);
@@ -119,10 +115,9 @@ export function YonseiMap({
           lng: event.latLng.getLng(),
         };
         if (mode === "create") onDraftPoint(point);
-        if (testPositionEnabled) onTestPosition(point);
       });
     });
-  }, [sdkReady, mode, testPositionEnabled, onDraftPoint, onTestPosition]);
+  }, [sdkReady, mode, onDraftPoint]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -164,7 +159,7 @@ export function YonseiMap({
     if (userPosition) {
       const center = new kakao.maps.LatLng(userPosition.lat, userPosition.lng);
       const radar = document.createElement("div");
-      radar.className = `gps-radar ${testPositionEnabled ? "test" : ""}`;
+      radar.className = "gps-radar";
       radar.innerHTML = '<span class="gps-radar-sweep"></span><span class="gps-radar-core"></span><b>50m</b>';
 
       overlays.push(
@@ -173,10 +168,10 @@ export function YonseiMap({
           center,
           radius: 50,
           strokeWeight: 1,
-          strokeColor: testPositionEnabled ? "#f2a7c0" : "#75e2d7",
+          strokeColor: "#7ab8ff",
           strokeOpacity: 0.9,
           strokeStyle: "solid",
-          fillColor: testPositionEnabled ? "#f2a7c0" : "#75e2d7",
+          fillColor: "#7ab8ff",
           fillOpacity: 0.08,
         }),
         new kakao.maps.CustomOverlay({
@@ -189,18 +184,6 @@ export function YonseiMap({
       );
     }
 
-    if (userPosition && testPositionEnabled) {
-      const testMarker = new kakao.maps.Marker({
-        map,
-        position: new kakao.maps.LatLng(userPosition.lat, userPosition.lng),
-        draggable: true,
-      });
-      kakao.maps.event.addListener(testMarker, "dragend", () => {
-        const position = testMarker.getPosition();
-        onTestPosition({ lat: position.getLat(), lng: position.getLng() });
-      });
-      overlays.push(testMarker);
-    }
     overlaysRef.current = overlays;
   }, [
     mapReady,
@@ -209,10 +192,8 @@ export function YonseiMap({
     mode,
     draftPoint,
     userPosition,
-    testPositionEnabled,
     onSelect,
     onDraftPoint,
-    onTestPosition,
   ]);
 
   useEffect(() => {
@@ -229,7 +210,7 @@ export function YonseiMap({
         <div className="fallback-grid" />
         <div className="fallback-campus">
           <span>SINCHON CAMPUS · OFFLINE GRID</span>
-          <strong>YONSEI<br />AFTERDARK</strong>
+          <strong>YONSEI<br />WALKING RADIO</strong>
           <p>
             Kakao 지도 키 또는 로컬 도메인 등록을 확인해주세요. GPS와 로컬 사연
             저장은 계속 사용할 수 있습니다.
