@@ -162,6 +162,18 @@ export default function Home() {
     [stories, selectedId],
   );
 
+  const selectedDistance = useMemo(
+    () =>
+      selected && userPosition
+        ? distanceMeters(userPosition, {
+            lat: selected.latitude,
+            lng: selected.longitude,
+          })
+        : null,
+    [selected, userPosition],
+  );
+  const isSongUnlocked = selectedDistance !== null && selectedDistance <= 50;
+
   const nearbyStories = useMemo(
     () =>
       userPosition
@@ -486,24 +498,43 @@ export default function Home() {
                     <strong>{selected.nickname}</strong>
                   </span>
                 </div>
-                <div className="player">
-                  <iframe
-                    key={selected.youtube_id}
-                    src={`https://www.youtube.com/embed/${selected.youtube_id}?feature=oembed&playsinline=1&rel=0`}
-                    title={`${selected.title}의 노래`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                </div>
-                <a
-                  className="youtube-fallback"
-                  href={`https://www.youtube.com/watch?v=${selected.youtube_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  재생이 막히면 YouTube에서 듣기 ↗
-                </a>
+                {isSongUnlocked ? (
+                  <>
+                    <div className="player">
+                      <iframe
+                        key={selected.youtube_id}
+                        src={`https://www.youtube.com/embed/${selected.youtube_id}?feature=oembed&playsinline=1&rel=0`}
+                        title={`${selected.title}의 노래`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
+                      />
+                    </div>
+                    <a
+                      className="youtube-fallback"
+                      href={`https://www.youtube.com/watch?v=${selected.youtube_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      재생이 막히면 YouTube에서 듣기 ↗
+                    </a>
+                  </>
+                ) : (
+                  <div className="song-lock">
+                    <span className="song-lock-icon"><UiIcon name="locate" /></span>
+                    <div>
+                      <strong>노래는 이 장소에서 열립니다</strong>
+                      <p>
+                        {selectedDistance === null
+                          ? "GPS로 위치를 확인해 주세요."
+                          : `현재 약 ${Math.round(selectedDistance)}m 거리 · 50m 안으로 이동해 주세요.`}
+                      </p>
+                    </div>
+                    <button type="button" onClick={locateMe} disabled={locating}>
+                      {locating ? "위치 확인 중…" : "현재 위치 확인"}
+                    </button>
+                  </div>
+                )}
                 <div className="story-delete-area">
                   {!deleteOpen ? (
                     <button
